@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <exception>
+#include <iostream>
 #include "MyExceptions.h"
 
 using namespace std;
@@ -18,6 +19,7 @@ private:
     int row, col;
     vector<vector<T>> data;
     void initialize_data(const int row, const int col);
+    void print_data();
 public:
     Matrix<T>(const int desRow, const int desCol)
         :row(desRow), col(desCol){
@@ -28,70 +30,114 @@ public:
         // start with a matrix capacity of 10
         this->initialize_data(10,10);
     };
-    bool enter_data(const vector<T> rowData, const int rowNum);
-    bool enter_data(const vector<vector<T>> newData);
-    void setDim(const int row, const int col);
-    Matrix<T> operator * (const Matrix& anotherMat);
+
+    // Copy constructor
+    Matrix<T>(const Matrix &M)
+    {
+        this->enter_data(M.data);
+    }
+    // Copy constructor
+    Matrix<T>(const vector<vector<T>> newData) 
+    {
+        this->enter_data(newData);
+    }
+
+    void enter_data(const vector<T> rowData, const int rowNum);
+    void enter_data(const vector<vector<T>> newData);
+    bool check_data(const vector<T> rowData);
+    bool check_data(const vector<vector<T>> newData);
+    void set_dimensions(const int row, const int col);
+    Matrix<T> operator*(const Matrix<T>& anotherMat);
     Matrix<T> transpose();
-    Matrix<T> operator = (const Matrix& anotherMat);
-    int getRow(){return row;}
-    int getCol(){return col;}
+    void set_data(vector<vector<T>> newData);
+    
+    template<typename MatType> friend ostream& operator<<(ostream& output, const Matrix<MatType>& M);
+    /**
+     * @brief Get matrix data
+     * 
+     * @return int matrix data
+     */
+    vector<vector<T>> getData(){return (*this).data;}
+    /**
+     * @brief Get Row variable
+     * 
+     * @return int number of rows
+     */
+    int getRow(){return (*this).row;}
+
+    /**
+     * @brief Get the Col variable
+     * 
+     * @return int number of columns
+     */
+    int getCol(){return (*this).col;}
 };
 
+
 template<typename T>
-void Matrix<T>::setDim(const int row, const int col)
+void Matrix<T>::set_data(vector<vector<T>> newData)
 {
-    this->row = row;
-    this->col = col;
+    (*this).data = newData;
 }
+template<typename T>
+void Matrix<T>::set_dimensions(const int row, const int col)
+{
+    this->initialize_data(row, col);
+}
+
 /**
- * @brief enter new matrix data by row number
+ * @brief test to check valid size of row data
  * 
- * @tparam T type of data
- * @param rowData vector of type T
- * @param rowNum row index to enter data
- * @return bool checks if data saved or not
+ * @tparam T data type
+ * @param rowData vector to check
+ * @return true if correct size
+ * @return false if incorrect size>
+*/
+template<typename T>
+bool Matrix<T>::check_data(const vector<T> rowData)
+{
+    bool valid_column = rowData.size() == (*this).getCol();
+
+    if(valid_column)
+    {
+        return true;
+    }
+
+    throw shapeEx;
+}
+
+/**
+ * @brief test to validate new vector of vectors
+ * 
+ * @tparam T data type
+ * @param toCheck vector of vectors to check
+ * @return true if valid size
+ * @return false invalid size
  */
 template<typename T>
-bool Matrix<T>::enter_data(const vector<T> rowData, const int rowNum)
+bool Matrix<T>::check_data(const vector<vector<T>> toCheck)
 {
-    
-    bool valid_data = rowData.size() == this.col;
-    
-    // check if the column size of entered row matches the initialized 
-    if(!valid_data)
+    for(int idx=0; idx < toCheck.size();idx++)
     {
-        cout << "Data entered is invalid size. Try again.";
-
-        return valid_data;
+        (*this).check_data(toCheck[idx]);
+        
     }
-    this->data[rowNum] = rowData;
-    
-    return valid_data;
+    return true;
 }
-
 /**
  * @brief enter new matrix data
  * 
  * @tparam T type of data
  * @param newData 
  */
-template<typename T>
-bool Matrix<T>::enter_data(const vector<vector<T>> newData)
-{
-    bool col_data = newData.size() == this->col;
-    bool row_data = newData.size() == this->row;
- 
-    // check if the column size of entered row matches the initialized 
-    if(!row_data or !col_data)
-    {
-        cout << "Data entered is invalid size. Try again.";
 
-        return valid_data;
+template<typename T>
+void Matrix<T>::enter_data(const vector<vector<T>> newData)
+{
+    if((*this).check_data(newData))
+    {
+        (*this).getData() = newData;
     }
-    this->data = newData;
-    
-    return valid_data;
 }
 
 /**
@@ -119,11 +165,11 @@ void Matrix<T>::initialize_data(const int row, const int col)
         // reserve data size ahead of time
         vector<T> colCapacity;
         colCapacity.reserve(col);
-        data.reserve(row);
+        (*this).data.reserve(row);
 
         for(int idx=0; idx < row;idx++)
         {
-            data.push_back(colCapacity);
+            (*this).data.push_back(colCapacity);
         }
     }
     catch(exception& e)
@@ -134,21 +180,6 @@ void Matrix<T>::initialize_data(const int row, const int col)
     
 }
 
-/**
- * @brief method to overload copy operator
- * 
- * @param copySource Matrix to be copied
- * @return Matrix returns the copied object
- */
-template<typename T>
-Matrix<T> Matrix<T>::operator=(const Matrix<T>& copySource)
-{
-    this->data = copySource.data;
-    this->row = copySource.row;
-    this->col = copySource.col;
-
-    return *this;
-}
 
 /**
  * @brief Method to transpose the current matrix, switches rows and columns
@@ -158,16 +189,17 @@ Matrix<T> Matrix<T>::operator=(const Matrix<T>& copySource)
 template<typename T>
 Matrix<T> Matrix<T>::transpose()
 {
-    vector<vector<T>> updatedData(this.row, vector<T>(this.col, 0));
+    vector<vector<T>> updatedData((*this).getRow(), vector<T>((*this).getCol(), 0));
     for(int idx=0; idx < row; idx++)
     {
         for(int jdx=0; jdx < col; jdx++)
         {
-            updatedData[jdx][idx] = this->data[idx][jdx];
+            updatedData[jdx][idx] = data[idx][jdx];
         }
     }
     this->data = updatedData;
 
+    cout << *this << endl;
     return *this;
 }
 
@@ -178,7 +210,7 @@ Matrix<T> Matrix<T>::transpose()
  * @return Matrix resultant matrix after multiplication
  */
 template<typename T>
-Matrix<T> Matrix<T>::operator *(const Matrix<T>& anotherMat)
+Matrix<T> Matrix<T>::operator* (const Matrix<T> &anotherMat)
 {
     // test for dimension mismatch
     try{
@@ -195,17 +227,45 @@ Matrix<T> Matrix<T>::operator *(const Matrix<T>& anotherMat)
             {
                 for(int element = 0; element < col; element++)
                 {
-                    resMat->data[idx][jdx] += this->data[idx][element] * anotherMat->data[element][jdx]; 
+                    resMat.data[idx][jdx] += this->data[idx][element] * anotherMat->data[element][jdx]; 
                 }
             }
         }
+
+        cout << resMat << endl;
+        return *resMat;
 
     }
     catch(exception& e)
     {
         cerr << e.what() << "\n";
     }
-    
+
 }
 
+template<typename T>
+void Matrix<T>::print_data()
+{
+ 
+   
+}
+
+template<typename MatType> 
+ostream& operator<<(ostream& output, const Matrix<MatType>& M)
+{
+    Matrix<MatType>& ref = const_cast <Matrix<MatType>&>(M);
+    for(int i=0; i < ref.getRow(); i++)
+    {
+       output << "[ ";
+       for(int j=0; j < ref.getCol(); j++)
+       {
+           output << ref.getData()[i].at(j) << ' ';
+
+       }
+       
+       output << "]" << endl;
+
+   }
+   return output;
+}
 #endif
